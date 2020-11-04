@@ -1,106 +1,142 @@
-import binascii
 import socket
-import struct
-import sys
-import hashlib
-import random
-import time
 
-UDP_IP = '127.0.0.1'
-UDP_PORT = 5123
 
+# 각종 변수
+error = 0  # error
+fail_error = 100  # 실패시에 수신할 시퀀스 넘버 입니다.
 
 # 소켓 생성
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-sock.bind((UDP_IP,UDP_PORT))
+sock.bind(("127.0.0.1", 5123))
 
-responseSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+# SEQ, ACK
+SEQ = 0
+ACK = 0
 
-print("서버 준비 완료...\n")
+# timer에 쓰이는 변수
+start_time = 0
+stop_time = -1
+time_interval = 0.09
 
-# 패킷 해석
-unpacker = struct.Struct("I I 8s 32s")
-rData = struct.Struct('I I 32s')
 
-#서버 딜레이랑 Loss 프린틍
-def Network_Delay():
-    if True and random.choice([0,1,0]) == 1: #여기서 1이면 딜레이 있는거라고 판단
-        time.sleep(.01)
-        print("딜레이 발생")
-    else:
-        print("패킷 보냄")
+# -------------------------packet-----------------------------------------------------------#
+def make_pkt(SEQ):  # receiver는 SEQ만 보내면 댑니다. chksum은 sender와 똑같은 방법으로 검출
+    print("r패킷 생성중...")
+    seq_bytes = SEQ.to_bytes(4, byteorder='little', signed=True)
+    return seq_bytes
 
-def Network_Loss():
-    if True and random.choice([0,1,1,0]) == 1: #1이면 데이터 로스 발생 이라고 가정
-        print("loss 발생")
-        return(1)
-    else:
-        return(0)
 
-#checksum 오류 발생
-def Packet_Checksum_Corrupter(rcvpkt):
-    if True and random.choice([0,1,0,1]) == 1:
-        return(b'Corrupt!')
-    else:
-        return (rcvpkt)
+def make_falsePkt(fail_error):
+    print("r오류 패킷 생성중...")
+    seq_bytes = fail_error.to_bytes(4, byteorder='little', signed=True)
+    return seq_bytes
 
-#rpkt생성
-def make_rpkt(ACK, SEQ, chkSum):
-    chkSum_ToByte = chkSum.encode()
-    # ACK/NAK 패킷 생성해서 보내기
-    values = (rcvpkt[0], SEQ, chkSum_ToByte)
-    sndpkt = rData.pack(*values)
-    return sndpkt
 
-# 첵섬 오류 수
-Checksum_Error = 0
-# 연결 계속 유지 해야 하므로 while 반복문으로 구성
-while True:
-    print("---------------------------------------------------------------")
-    responseSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+def extract(rcvpkt):
+    seq = int.from_bytes(rcvpkt[0:4], byteorder='little', signed=True)
+    return seq, rcvpkt[4:]
 
-    data, addr = sock.recvfrom(1024)
 
-    rcvpkt = unpacker.unpack(data)
+# ------------------------------------------------------------------------------------------#
 
-    #정상적인 패킷 데이터 수신하고 서버에 띄움
-    print("패킷 정상 수신완료")
-    print(rcvpkt[0], rcvpkt[1], rcvpkt[2], rcvpkt[3])
-    SEQ = rcvpkt[1]   #0은 ACK자리
+# -------------------------UDT--------------------------------------------------------------#
+def udp_send(sndpkt, sock, addr):  # 여기서 loss와 biterror를 검출 합니다.
+    sock.sendto(sndpkt, addr)
+    return
 
-    if rcvpkt[3] != 500:
-        print("정상수신완료\n")
-        if rcvpkt[1] == 1:
-            SEQ = 0
+
+def udp_rcv(sock):
+    rcvpkt, addr = sock.recvfrom(5016)
+    return rcvpkt, addr
+
+
+# ------------------------------------------------------------------------------------------#
+
+# ----------------------------------------rdt-----------------------------------------------#
+def rdt_rcv(filename, sock):
+    global error
+    collect = 0
+    try:
+        file = open(filename, 'wb')
+        print("파일 오픈 완료")
+    except IOError:
+        print("파일 왜 또 안열려 ㅠㅠ..: ", filename)
+        return
+
+    while True:
+        rcvpkt, addr = udp_rcv(sock)
+        if not rcvpkt:
+            print("전송 끝 종료합니다...")
+            break
+        rSEQ, data = extract(rcvpkt)
+        print("패킷 수신 완료: ", rSEQ)
+
+        # ACK 보내는부분
+        if rSEQ == 100:
+            print("Error가 왔네용")
+            print("Error 잘못된 ACK를 보냅니당.", rSEQ)
+            error += 1
+            sndpkt = make_falsePkt(fail_error)
+            udp_send(sndpkt, sock, addr)
+
+        elif rSEQ == collect:
+            print("정상 수신완료.")
+            print("진짜 제대로된 패킷 ACK보냅니당.", rSEQ)
+            sndpkt = make_pkt(rSEQ)
+            file.write(data)
+            udp_send(sndpkt, sock, addr)
+
+            if collect == 0:
+                collect += 1
+            else:
+                collect -= 1
+    file.close()
+
+
+# ------------------------------------------------------------------------------------------#
+
+# --------------------------------------gbn_rdt---------------------------------------------#
+def gbn_rdt_rcv(filename, sock):
+    global error
+    correct = 0
+    try:
+        file = open(filename, 'wb')
+        print("파일 오픈 완료")
+    except IOError:
+        print("파일 오픈 오류: ", filename)
+        return
+
+    while True:
+        rcvpkt, addr = udp_rcv(sock)
+        if not rcvpkt:
+            print("전송 받은 패킷이 없습니다...\n 시스템종료")
+            break
+        rSEQ, data = extract(rcvpkt)
+        print("패킷 수신 완료: ", rSEQ)
+
+        # ACK 보내기
+        if rSEQ == correct:  # 한번 오류를 받기 시작하면 뒤에도 계속 오류 입니다. sr이랑 다르게 구현함.
+            print("정상 수신 완료")
+            print("ACK를 sender 에게 보내는중", correct)
+            sndpkt = make_pkt(correct)
+            udp_send(sndpkt, sock, addr)
+            correct += 1
+            file.write(data)
         else:
-            SEQ = 1
+            print("비정상 수신")
+            print("비정상 ACK를 sender 에게 보내는중", rSEQ)
+            sndpkt = make_pkt(rSEQ)
+            udp_send(sndpkt, sock, addr)
 
-        #checksum 생성
-        chkSum = str(random.random())  # 원랜 여기서 만들지 않겠지만.. 과제를 위해 여기서 만들었어요.
-        sndpkt = make_rpkt(rcvpkt[0], SEQ, chkSum)
 
-        #랜덤으로 딜레이 발생시키기
-        Network_Delay()
-        Network_Loss()
-        responseSocket.sendto(sndpkt ,(UDP_IP, 7841))
-        responseSocket.close()
+# ----------------------------------------------------------------------------------#
+filename = "yuno.txt"
+'''--------------rdt실행-------------
+rdt_rcv(filename, sock)
+----------------------------------'''
 
-    else:
-
-        print("첵섬 오류 발생 재전송 요청")
-
-        if rcvpkt[0] == 1:
-            ACK = 0
-        else:
-            ACK = 1
-
-        # 패킷 생성
-        responseVal = (rcvpkt[0], SEQ, chkSum)
-        UDP_Packet = rData.pack(*responseVal)
-        Network_Delay()
-        Network_Loss()
-        responseSocket.sendto(UDP_Packet,(UDP_IP,7841))
-        responseSocket.close()
-
-        print("ACK 보내는중")
-
+'''--------------gbn실행-------------
+gbn_rdt_rcv(filename, sock)
+----------------------------------'''
+gbn_rdt_rcv(filename, sock)
+sock.close()
