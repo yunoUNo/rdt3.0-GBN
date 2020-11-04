@@ -1,0 +1,411 @@
+import socket
+from random import random
+
+#각종 변수
+loss = 0   #loss
+bit_error = 0   #bit에러
+fail_error = 100   # 실패시에 수신할 시퀀스 넘버 입니다.
+filename = 'yuno.txt'
+
+# 소켓 생성
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+## ip랑 포트넘버 자꾸 틀리게 작성하게 되길래 그냥 저장해놨어요
+MyIP = "127.0.0.1"
+MyPort = 5123
+
+# SEQ, ACK
+SEQ = 0
+ACK = 0
+
+#-------------------------packet-----------------------------------------------------------#
+def make_pkt(SEQ, data=b''):   # checksum은 패킷에 포함 안 시키고 랜덤으로 발생시켜서 오류 잡아낼겁니다.
+    print("패킷 생성중...")
+    seq_bytes = SEQ.to_bytes(4, byteorder='little', signed=True)
+    return seq_bytes+data
+
+def make_falsePkt(fail_error, data = b''):
+    print("오류 패킷 생성중...")
+    seq_bytes = fail_error.to_bytes(4, byteorder='little', signed = True)
+    return seq_bytes + data
+
+def extract(rcvpkt):
+    seq_num = int.from_bytes(rcvpkt[0:4], byteorder = 'little', signed = True)
+    return seq_num, rcvpkt[4:]
+#------------------------------------------------------------------------------------------#
+
+#-------------------------UDT--------------------------------------------------------------#
+def udt_send(sndpkt,sock):   #여기서 loss와 biterror를 검출 합니다.
+    sock.sendto(sndpkt, (MyIP,MyPort))
+    return
+
+def udt_rcv(sock):
+    rcvpkt, addr = sock.recvfrom(5016)
+    return rcvpkt, addr
+#------------------------------------------------------------------------------------------#
+
+#--------------------------rdt-----------------------------------------------------------#
+def rdt_send(data, sock):
+    global loss, bit_error
+    num = random.randint(0,1000)
+
+    # 실험을 위한 fileopen
+    try:
+        file = open(filename, 'rb')
+
+    if num == 500:
+        sndpkt = make_falsePkt(fail_error, data)   # seqNum을 500 으로 했기 때문에 정상 수신이 되지 않음.
+        print("Loss 발생 상황!")
+        loss += 1
+        udt_send(sndpkt, sock)
+    elif num == 501:
+        sndpkt = make_falsePkt(fail_error, data)
+        print("bit error 발생")
+        bit_error += 1
+        udt_send(sndpkt, sock)
+    else :   # 정상적으로 수신될 때 정상 패킷 생성 합니다.
+        sndpkt = make_pkt(SEQ, data)
+        print(" 정상 패킷 생성 완료 정상 수신...")
+        udt_send(sndpkt, sock)
+
+import socket
+from random import random
+
+#각종 변수
+loss = 0   #loss
+bit_error = 0   #bit에러
+fail_error = 100   # 실패시에 수신할 시퀀스 넘버 입니다.
+filename = 'yuno.txt'
+
+# 소켓 생성
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+## ip랑 포트넘버 자꾸 틀리게 작성하게 되길래 그냥 저장해놨어요
+MyIP = "127.0.0.1"
+MyPort = 5123
+
+# SEQ, ACK
+SEQ = 0
+ACK = 0
+
+#-------------------------packet-----------------------------------------------------------#
+def make_pkt(SEQ, data=b''):   # checksum은 패킷에 포함 안 시키고 랜덤으로 발생시켜서 오류 잡아낼겁니다.
+    print("패킷 생성중...")
+    seq_bytes = SEQ.to_bytes(4, byteorder='little', signed=True)
+    return seq_bytes+data
+
+def make_falsePkt(fail_error, data = b''):
+    print("오류 패킷 생성중...")
+    seq_bytes = fail_error.to_bytes(4, byteorder='little', signed = True)
+    return seq_bytes + data
+
+def extract(rcvpkt):
+    seq_num = int.from_bytes(rcvpkt[0:4], byteorder = 'little', signed = True)
+    return seq_num, rcvpkt[4:]
+#------------------------------------------------------------------------------------------#
+
+#-------------------------UDT--------------------------------------------------------------#
+def udt_send(sndpkt,sock):   #여기서 loss와 biterror를 검출 합니다.
+    sock.sendto(sndpkt, (MyIP,MyPort))
+    return
+
+def udt_rcv(sock):
+    rcvpkt, addr = sock.recvfrom(5016)
+    return rcvpkt, addr
+#------------------------------------------------------------------------------------------#
+
+#--------------------------rdt-----------------------------------------------------------#
+def rdt_send(data, sock):
+    global loss, bit_error
+    num = random.randint(0,1000)
+
+    # 실험을 위한 fileopen
+    try:
+        file = open(filename, 'rb')
+
+    if num == 500:
+        sndpkt = make_falsePkt(fail_error, data)   # seqNum을 500 으로 했기 때문에 정상 수신이 되지 않음.
+        print("Loss 발생 상황!")
+        loss += 1
+        udt_send(sndpkt, sock)
+    elif num == 501:
+        sndpkt = make_falsePkt(fail_error, data)
+        print("bit error 발생")
+        bit_error += 1
+        udt_send(sndpkt, sock)
+    else :   # 정상적으로 수신될 때 정상 패킷 생성 합니다.
+        sndpkt = make_pkt(SEQ, data)
+        print(" 정상 패킷 생성 완료 정상 수신...")
+        udt_send(sndpkt, sock)
+
+
+import socket
+from random import random
+
+#각종 변수
+loss = 0   #loss
+bit_error = 0   #bit에러
+fail_error = 100   # 실패시에 수신할 시퀀스 넘버 입니다.
+filename = 'yuno.txt'
+
+# 소켓 생성
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+## ip랑 포트넘버 자꾸 틀리게 작성하게 되길래 그냥 저장해놨어요
+MyIP = "127.0.0.1"
+MyPort = 5123
+
+# SEQ, ACK
+SEQ = 0
+ACK = 0
+
+#-------------------------packet-----------------------------------------------------------#
+def make_pkt(SEQ, data=b''):   # checksum은 패킷에 포함 안 시키고 랜덤으로 발생시켜서 오류 잡아낼겁니다.
+    print("패킷 생성중...")
+    seq_bytes = SEQ.to_bytes(4, byteorder='little', signed=True)
+    return seq_bytes+data
+
+def make_falsePkt(fail_error, data = b''):
+    print("오류 패킷 생성중...")
+    seq_bytes = fail_error.to_bytes(4, byteorder='little', signed = True)
+    return seq_bytes + data
+
+def extract(rcvpkt):
+    seq_num = int.from_bytes(rcvpkt[0:4], byteorder = 'little', signed = True)
+    return seq_num, rcvpkt[4:]
+#------------------------------------------------------------------------------------------#
+
+#-------------------------UDT--------------------------------------------------------------#
+def udt_send(sndpkt,sock):   #여기서 loss와 biterror를 검출 합니다.
+    sock.sendto(sndpkt, (MyIP,MyPort))
+    return
+
+def udt_rcv(sock):
+    rcvpkt, addr = sock.recvfrom(5016)
+    return rcvpkt, addr
+#------------------------------------------------------------------------------------------#
+
+#--------------------------rdt-----------------------------------------------------------#
+def rdt_send(data, sock):
+    global loss, bit_error
+    num = random.randint(0,1000)
+
+    # 실험을 위한 fileopen
+    try:
+        file = open(filename, 'rb')
+
+    if num == 500:
+        sndpkt = make_falsePkt(fail_error, data)   # seqNum을 500 으로 했기 때문에 정상 수신이 되지 않음.
+        print("Loss 발생 상황!")
+        loss += 1
+        udt_send(sndpkt, sock)
+    elif num == 501:
+        sndpkt = make_falsePkt(fail_error, data)
+        print("bit error 발생")
+        bit_error += 1
+        udt_send(sndpkt, sock)
+    else :   # 정상적으로 수신될 때 정상 패킷 생성 합니다.
+        sndpkt = make_pkt(SEQ, data)
+        print(" 정상 패킷 생성 완료 정상 수신...")
+        udt_send(sndpkt, sock)
+import socket
+from random import random
+
+#각종 변수
+loss = 0   #loss
+bit_error = 0   #bit에러
+fail_error = 100   # 실패시에 수신할 시퀀스 넘버 입니다.
+filename = 'yuno.txt'
+
+# 소켓 생성
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+## ip랑 포트넘버 자꾸 틀리게 작성하게 되길래 그냥 저장해놨어요
+MyIP = "127.0.0.1"
+MyPort = 5123
+
+# SEQ, ACK
+SEQ = 0
+ACK = 0
+
+#-------------------------packet-----------------------------------------------------------#
+def make_pkt(SEQ, data=b''):   # checksum은 패킷에 포함 안 시키고 랜덤으로 발생시켜서 오류 잡아낼겁니다.
+    print("패킷 생성중...")
+    seq_bytes = SEQ.to_bytes(4, byteorder='little', signed=True)
+    return seq_bytes+data
+
+def make_falsePkt(fail_error, data = b''):
+    print("오류 패킷 생성중...")
+    seq_bytes = fail_error.to_bytes(4, byteorder='little', signed = True)
+    return seq_bytes + data
+
+def extract(rcvpkt):
+    seq_num = int.from_bytes(rcvpkt[0:4], byteorder = 'little', signed = True)
+    return seq_num, rcvpkt[4:]
+#------------------------------------------------------------------------------------------#
+
+#-------------------------UDT--------------------------------------------------------------#
+def udt_send(sndpkt,sock):   #여기서 loss와 biterror를 검출 합니다.
+    sock.sendto(sndpkt, (MyIP,MyPort))
+    return
+
+def udt_rcv(sock):
+    rcvpkt, addr = sock.recvfrom(5016)
+    return rcvpkt, addr
+#------------------------------------------------------------------------------------------#
+
+#--------------------------rdt-----------------------------------------------------------#
+def rdt_send(data, sock):
+    global loss, bit_error
+    num = random.randint(0,1000)
+
+    # 실험을 위한 fileopen
+    try:
+        file = open(filename, 'rb')
+
+    if num == 500:
+        sndpkt = make_falsePkt(fail_error, data)   # seqNum을 500 으로 했기 때문에 정상 수신이 되지 않음.
+        print("Loss 발생 상황!")
+        loss += 1
+        udt_send(sndpkt, sock)
+    elif num == 501:
+        sndpkt = make_falsePkt(fail_error, data)
+        print("bit error 발생")
+        bit_error += 1
+        udt_send(sndpkt, sock)
+    else :   # 정상적으로 수신될 때 정상 패킷 생성 합니다.
+        sndpkt = make_pkt(SEQ, data)
+        print(" 정상 패킷 생성 완료 정상 수신...")
+        udt_send(sndpkt, sock)
+import socket
+from random import random
+
+#각종 변수
+loss = 0   #loss
+bit_error = 0   #bit에러
+fail_error = 100   # 실패시에 수신할 시퀀스 넘버 입니다.
+filename = 'yuno.txt'
+
+# 소켓 생성
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+## ip랑 포트넘버 자꾸 틀리게 작성하게 되길래 그냥 저장해놨어요
+MyIP = "127.0.0.1"
+MyPort = 5123
+
+# SEQ, ACK
+SEQ = 0
+ACK = 0
+
+#-------------------------packet-----------------------------------------------------------#
+def make_pkt(SEQ, data=b''):   # checksum은 패킷에 포함 안 시키고 랜덤으로 발생시켜서 오류 잡아낼겁니다.
+    print("패킷 생성중...")
+    seq_bytes = SEQ.to_bytes(4, byteorder='little', signed=True)
+    return seq_bytes+data
+
+def make_falsePkt(fail_error, data = b''):
+    print("오류 패킷 생성중...")
+    seq_bytes = fail_error.to_bytes(4, byteorder='little', signed = True)
+    return seq_bytes + data
+
+def extract(rcvpkt):
+    seq_num = int.from_bytes(rcvpkt[0:4], byteorder = 'little', signed = True)
+    return seq_num, rcvpkt[4:]
+#------------------------------------------------------------------------------------------#
+
+#-------------------------UDT--------------------------------------------------------------#
+def udt_send(sndpkt,sock):   #여기서 loss와 biterror를 검출 합니다.
+    sock.sendto(sndpkt, (MyIP,MyPort))
+    return
+
+def udt_rcv(sock):
+    rcvpkt, addr = sock.recvfrom(5016)
+    return rcvpkt, addr
+#------------------------------------------------------------------------------------------#
+
+#--------------------------rdt-----------------------------------------------------------#
+def rdt_send(data, sock):
+    global loss, bit_error
+    num = random.randint(0,1000)
+
+    # 실험을 위한 fileopen
+    try:
+        file = open(filename, 'rb')
+
+    if num == 500:
+        sndpkt = make_falsePkt(fail_error, data)   # seqNum을 500 으로 했기 때문에 정상 수신이 되지 않음.
+        print("Loss 발생 상황!")
+        loss += 1
+        udt_send(sndpkt, sock)
+    elif num == 501:
+        sndpkt = make_falsePkt(fail_error, data)
+        print("bit error 발생")
+        bit_error += 1
+        udt_send(sndpkt, sock)
+    else :   # 정상적으로 수신될 때 정상 패킷 생성 합니다.
+        sndpkt = make_pkt(SEQ, data)
+        print(" 정상 패킷 생성 완료 정상 수신...")
+        udt_send(sndpkt, sock)
+import socket
+from random import random
+
+#각종 변수
+loss = 0   #loss
+bit_error = 0   #bit에러
+fail_error = 100   # 실패시에 수신할 시퀀스 넘버 입니다.
+filename = 'yuno.txt'
+
+# 소켓 생성
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+## ip랑 포트넘버 자꾸 틀리게 작성하게 되길래 그냥 저장해놨어요
+MyIP = "127.0.0.1"
+MyPort = 5123
+
+# SEQ, ACK
+SEQ = 0
+ACK = 0
+
+#-------------------------packet-----------------------------------------------------------#
+def make_pkt(SEQ, data=b''):   # checksum은 패킷에 포함 안 시키고 랜덤으로 발생시켜서 오류 잡아낼겁니다.
+    print("패킷 생성중...")
+    seq_bytes = SEQ.to_bytes(4, byteorder='little', signed=True)
+    return seq_bytes+data
+
+def make_falsePkt(fail_error, data = b''):
+    print("오류 패킷 생성중...")
+    seq_bytes = fail_error.to_bytes(4, byteorder='little', signed = True)
+    return seq_bytes + data
+
+def extract(rcvpkt):
+    seq_num = int.from_bytes(rcvpkt[0:4], byteorder = 'little', signed = True)
+    return seq_num, rcvpkt[4:]
+#------------------------------------------------------------------------------------------#
+
+#-------------------------UDT--------------------------------------------------------------#
+def udt_send(sndpkt,sock):   #여기서 loss와 biterror를 검출 합니다.
+    sock.sendto(sndpkt, (MyIP,MyPort))
+    return
+
+def udt_rcv(sock):
+    rcvpkt, addr = sock.recvfrom(5016)
+    return rcvpkt, addr
+#------------------------------------------------------------------------------------------#
+
+#--------------------------rdt-----------------------------------------------------------#
+def rdt_send(data, sock):
+    global loss, bit_error
+    num = random.randint(0,1000)
+
+    # 실험을 위한 fileopen
+    try:
+        file = open(filename, 'rb')
+
+    if num == 500:
+        sndpkt = make_falsePkt(fail_error, data)   # seqNum을 500 으로 했기 때문에 정상 수신이 되지 않음.
+        print("Loss 발생 상황!")
+        loss += 1
+        udt_send(sndpkt, sock)
+    elif num == 501:
+        sndpkt = make_falsePkt(fail_error, data)
+        print("bit error 발생")
+        bit_error += 1
+        udt_send(sndpkt, sock)
+    else :   # 정상적으로 수신될 때 정상 패킷 생성 합니다.
+        sndpkt = make_pkt(SEQ, data)
+        print(" 정상 패킷 생성 완료 정상 수신...")
+        udt_send(sndpkt, sock)
